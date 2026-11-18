@@ -1,7 +1,9 @@
-﻿using CineNord.Rest.Data;
+using CineNord.Rest.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using CineNord.Rest.Dtos;
+using CineNord.Rest.Models;
 
 namespace CineNord.Rest.Controllers;
 
@@ -79,8 +81,6 @@ public class MoviesController(RestDbContext db) : ControllerBase
         });
     }
 
-    // Kontekstuelle links til én film
-    
     // GET /v1/movies/5
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetMovie(int id)
@@ -101,6 +101,75 @@ public class MoviesController(RestDbContext db) : ControllerBase
             _links = MovieLinks(movie.Id)
         });
     }
+
+    // POST /v1/movies
+    [HttpPost]
+    public async Task<IActionResult> CreateMovie(MovieRequest request)
+    {
+        var movie = new Movie();
+        Apply(movie, request);
+
+        db.Movies.Add(movie);
+        await db.SaveChangesAsync();
+
+        // 201 Created + Location-header der peger på den nye film
+        return CreatedAtAction(nameof(GetMovie), new { id = movie.Id }, ToDto(movie));
+    }
+
+    // PUT /v1/movies/5
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> UpdateMovie(int id, MovieRequest request)
+    {
+        var movie = await db.Movies.FindAsync(id);
+        if (movie is null)
+            return NotFound(new { error = $"Film med id {id} findes ikke" });
+
+        Apply(movie, request);
+        await db.SaveChangesAsync();
+
+        return Ok(ToDto(movie));
+    }
+
+    // DELETE /v1/movies/5
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteMovie(int id)
+    {
+        var movie = await db.Movies.FindAsync(id);
+        if (movie is null)
+            return NotFound(new { error = $"Film med id {id} findes ikke" });
+
+        if (await db.Screenings.AnyAsync(sc => sc.MovieId == id))
+            return Conflict(new { error = "Filmen har forestillinger og kan ikke slettes" });
+
+        db.Movies.Remove(movie);
+        await db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Kopierer de tilladte felter fra request til entitet
+    private static void Apply(Movie movie, MovieRequest r)
+    {
+        movie.Title = r.Title.Trim();
+        movie.Genre = r.Genre;
+        movie.DurationMinutes = r.DurationMinutes;
+        movie.AgeRating = r.AgeRating;
+        movie.ReleaseYear = r.ReleaseYear;
+    }
+
+    // Samme svarformat for én film overalt
+    private object ToDto(Movie m) => new
+    {
+        m.Id,
+        m.Title,
+        m.Genre,
+        m.DurationMinutes,
+        m.AgeRating,
+        m.ReleaseYear,
+        _links = MovieLinks(m.Id)
+    };
+
+    // Kontekstuelle links til én film
     private Dictionary<string, object> MovieLinks(int id)
     {
         var links = new Dictionary<string, object>
