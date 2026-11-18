@@ -80,6 +80,27 @@ public class MoviesController(RestDbContext db) : ControllerBase
     }
 
     // Kontekstuelle links til én film
+    
+    // GET /v1/movies/5
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetMovie(int id)
+    {
+        var movie = await db.Movies.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
+
+        if (movie is null)
+            return NotFound(new { error = $"Film med id {id} findes ikke" });
+
+        return Ok(new
+        {
+            movie.Id,
+            movie.Title,
+            movie.Genre,
+            movie.DurationMinutes,
+            movie.AgeRating,
+            movie.ReleaseYear,
+            _links = MovieLinks(movie.Id)
+        });
+    }
     private Dictionary<string, object> MovieLinks(int id)
     {
         var links = new Dictionary<string, object>
