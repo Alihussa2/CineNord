@@ -1,0 +1,39 @@
+services:
+  # En PostgreSQL med en database pr. API (oprettes af db/init/01-create-databases.sql)
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: cinenord
+      POSTGRES_PASSWORD: cinenord
+    ports: ["5432:5432"]
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
+
+  # 3 uafhaengige shards til GraphQL/ETL
+  shard0:
+    image: postgres:17
+    environment: { POSTGRES_USER: cinenord, POSTGRES_PASSWORD: cinenord, POSTGRES_DB: shard0 }
+    ports: ["5440:5432"]
+    volumes: [shard0data:/var/lib/postgresql/data]
+  shard1:
+    image: postgres:17
+    environment: { POSTGRES_USER: cinenord, POSTGRES_PASSWORD: cinenord, POSTGRES_DB: shard1 }
+    ports: ["5441:5432"]
+    volumes: [shard1data:/var/lib/postgresql/data]
+  shard2:
+    image: postgres:17
+    environment: { POSTGRES_USER: cinenord, POSTGRES_PASSWORD: cinenord, POSTGRES_DB: shard2 }
+    ports: ["5442:5432"]
+    volumes: [shard2data:/var/lib/postgresql/data]
+
+  # Key-value store: REST-blacklist (db 0) og GraphQL-tokens (db 1)
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+volumes:
+  pgdata:
+  shard0data:
+  shard1data:
+  shard2data:

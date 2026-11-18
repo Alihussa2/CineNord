@@ -1,0 +1,46 @@
+// seating.proto - live saedevalg til CineNord
+syntax = "proto3";
+
+package cinenord.seating;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "CineNord.Grpc.Protos";
+
+enum SeatActionType {
+  SEAT_ACTION_TYPE_SELECT = 0;
+  SEAT_ACTION_TYPE_RELEASE = 1;
+}
+
+message ReserveSeatRequest {
+  int32 screening_id = 1;
+  int32 seat_id = 2;
+  string client_id = 3;
+}
+
+message ReserveSeatResponse {
+  bool success = 1;
+  string status = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message SeatAction {
+  int32 screening_id = 1;
+  int32 seat_id = 2;
+  SeatActionType action = 3;
+  string client_id = 4;
+}
+
+message SeatUpdate {
+  int32 seat_id = 1;
+  string status = 2;
+  string by_client = 3;
+  string message = 4;
+}
+
+service SeatingService {
+  // Unary: reserver et saede
+  rpc ReserveSeat(ReserveSeatRequest) returns (ReserveSeatResponse);
+  // Bidi: klienten sender vaelg/fravaelg, serveren sender saedeaendringer
+  rpc SeatSelection(stream SeatAction) returns (stream SeatUpdate);
+}
